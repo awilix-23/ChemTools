@@ -137,6 +137,8 @@ int main(int argc, char *argv[])
         angle);
   }
 
+  free(cent_ind.array);
+  free(bond_ind.array);
   free(molecule);
   return 0;
 }

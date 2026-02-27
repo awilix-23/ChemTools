@@ -18,10 +18,10 @@ cd chemtools
 make
 ```
 
-Consider adding `bin` and `scripts` to your PATH:
+Consider adding `bin` to your PATH:
 
 ```bash
-export PATH=$PATH:/path/to/chemtools/bin:/path/to/chemtools/scripts
+export PATH=$PATH:/path/to/chemtools/bin
 ```
 
 ## 📝 License

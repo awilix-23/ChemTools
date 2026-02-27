@@ -1,11 +1,14 @@
-CC := gcc
+CC := clang
 CFLAGS := -std=c99 -lm
-SOURCE := mio 
+DEBUG := -g -fsanitize=address -Wall -Wextra -Wpedantic
+
+SOURCES := $(wildcard src/*.c)
+TARGETS := $(patsubst src/%.c, %, $(SOURCES))
 ################################################################################
-debug: CFLAGS += -g -Wall -Wextra -Wpedantic -fsanitize=address
+debug: CFLAGS += $(DEBUG)
 debug: all
 
-all: $(addprefix bin/, $(SOURCE))
+all: $(addprefix bin/, $(TARGETS))
 
 bin/%: src/%.c | bin
 	$(CC) $(CFLAGS) -o $@ $<
@@ -13,7 +16,7 @@ bin/%: src/%.c | bin
 bin:
 	mkdir -p bin
 
-clean: # removes compiled binaries
-	rm $(addprefix bin/, $(SOURCE))
+clean:
+	rm $(addprefix bin/, $(TARGETS))
 
 .PHONY: all clean

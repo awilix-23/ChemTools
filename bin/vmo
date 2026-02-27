@@ -1,5 +1,4 @@
-#!/usr/bin/env dash
-SCRIPT_NAME="pmo"
+#!/bin/sh
 ################################################################################
 # Local Functions
 clean() {
@@ -7,25 +6,26 @@ clean() {
 }
 
 help() {
-    echo "Usage: ${SCRIPT_NAME} [options...] file"
-    echo
-    echo "Purpose: Visualize molecules"
-    echo "NOTE: xyz files will only plot the structure"
-    echo
-    echo "Optional arguments:"
-    echo "-h, --help                    Display this message again :3"
-    echo "    --render                  Render image at 4000x4000 px"
-    echo "-l, --lowres                  Use 1000x1000 px resolution instead"
-    echo "-r, --rotate  <AXIS><FLOAT>   Rotate around an axis (comma-sep. list)"
-    echo "-z, --zoom    <FLOAT>         Set zoom factor (default: 0.4)"
-    echo "-i, --iso     <FLOAT>         Isosurface value (default: 0.03)"
-    echo "-t, --trans                   Make isosurface transparent"
-    echo "-d, --dens                    Plot the spin density"
-    echo "-c, --clean                   Clear out /tmp from any cancelled runs"
-    echo
-    echo "Example:"
-    echo "  ${SCRIPT_NAME} -r x45,y10 -z 0.9 coord.xyz"
-    echo
+  local script_name=$(basename $0)
+  echo "Usage: ${script_name} [options...] file"
+  echo
+  echo "Visualize molecules and orbitals"
+  echo "NOTE: xyz files will only plot the structure"
+  echo
+  echo "Optional arguments:"
+  echo "-h, --help                    Display this message again :3"
+  echo "    --render                  Render image at 4000x4000 px"
+  echo "-l, --lowres                  Use 1000x1000 px resolution instead"
+  echo "-r, --rotate  <AXIS><FLOAT>   Rotate around an axis (comma-sep. list)"
+  echo "-z, --zoom    <FLOAT>         Set zoom factor (default: 0.4)"
+  echo "-i, --iso     <FLOAT>         Isosurface value (default: 0.03)"
+  echo "-t, --trans                   Make isosurface transparent"
+  echo "-d, --dens                    Plot the spin density"
+  echo "-c, --clean                   Clear out /tmp from any cancelled runs"
+  echo
+  echo "Example:"
+  echo "  ${script_name} -r x45,y10 -z 0.9 coord.xyz"
+  echo
 }
 ################################################################################
 # Initialization
@@ -67,7 +67,7 @@ EXT=${INFILE##*.}
 [ ${EXT} = "cub" ] && EXT="cube"
 [ ${EXT} = "xyz" ] && mos=0
 
-TMP=$(mktemp -t XXX.vmd)
+TMP=$(mktemp -t pmo-XXX.vmd)
 ################################################################################
 # VMD Tcl Interface
 cat > ${TMP} << EOF
@@ -82,6 +82,8 @@ light 1 on
 color Display Background white
 
 mol representation CPK 0.800000 0.250000 10.000000 10.000000
+color Name A green
+color Name N orange
 color Name O red
 color Name H white
 color Name C gray
