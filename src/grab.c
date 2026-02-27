@@ -13,7 +13,6 @@ typedef struct {
   FILE *input;
   FILE *output;
   bool help;
-  bool fail;
 } arg_t;
 /******************************************************************************/
 arg_t getopts(int32_t, char **);
