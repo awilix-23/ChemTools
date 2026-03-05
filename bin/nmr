@@ -1,0 +1,87 @@
+#!/bin/sh
+
+outfile="nmr.pdf"
+infile=""
+samples=2000
+hwhm=0.05
+x_max=0
+x_min=0
+
+
+main()
+{
+  argparse $@
+  [ -z "${CHEM_ROOT}" ] && echo "CHEM_ROOT environment not set." >&2 && exit 1
+  find_bounds
+  plot
+}
+
+
+plot()
+{
+  gnuplot -e "infile='${infile}'" \
+    -e "outfile='${outfile}'" \
+    -e "hwhm='${hwhm}'" \
+    -e "xmin='${x_min}'" \
+    -e "xmax='${x_max}'" \
+    -e "nsamples='${samples}'" \
+    -c ${CHEM_ROOT}/templates/nmr.gpl
+}
+
+find_bounds()
+{
+  x_min=$(sort -n ${infile} | head -1)
+  x_max=$(sort -n ${infile} | tail -1)
+
+  padding=$(awk "BEGIN { print (${x_max} - ${x_min}) * 0.15 }")
+
+  x_min=$(awk "BEGIN { print ${x_min} - ${padding} }")
+  x_max=$(awk "BEGIN { print ${x_max} + ${padding} }")
+}
+
+argparse()
+{
+  while :; do
+    case $1 in
+      -h|--help)
+        help && exit ;;
+      -o|--output)
+        outfile=$2
+        shift ;;
+      -w|--width)
+        hwhm=$2
+        shift ;;
+      -s|--samples)
+        samples=$2
+        shift ;;
+      -v|--verbose)
+        set -xv ;;
+      --)
+        shift
+        break ;;
+      -?*)
+        printf 'Ignoring unknown option: %s\n' "$1" >&2 ;;
+      *)
+        break ;;
+    esac
+    shift
+  done
+
+  [ -z $1 ] && echo "Input file required." && exit 1 || infile=$1
+  [ ! -f $1 ] && printf 'File not found: %s\n' "$1" >&2 && exit 1
+}
+
+help()
+{
+  local script_name=$(basename $0)
+  echo "Usage: ${script_name} [OPTION]... FILE"
+  echo "Generate NMR spectra.\n"
+  echo "  -h, --help                Display this message again. :)"
+  echo "  -v, --verbose             Debug mode."
+  echo "  -o, --output    FILE      Output file name. (Default: nmr.pdf)"
+  echo "  -w, --width     WIDTH     Half width at half maximum. (Default: 0.05)"
+  echo "  -s, --samples   SAMPLES   Sampling resolution. (Default: 2000)"
+}
+
+
+main $@

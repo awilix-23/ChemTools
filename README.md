@@ -15,6 +15,7 @@ Clone the repository and build the tools:
 ```bash
 git clone https://github.com/awilix/chemtools.git
 cd chemtools
+export CHEM_ROOT=$(pwd)
 make
 ```
 

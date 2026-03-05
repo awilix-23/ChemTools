@@ -1,0 +1,40 @@
+#!/usr/bin/env gnuplot
+
+set xlabel "Chemical Shift (ppm)"
+set ylabel "Relative Intensity"
+
+set samples nsamples
+set tics nomirror
+set border 3 # left and bottom 
+
+
+stats infile u 0 nooutput
+N = STATS_records
+array shifts[N]
+stats infile u (shifts[int($0+1)] = $1) nooutput
+
+
+L(p, p0) = 1 / (1 + ((p - p0) / hwhm)**2)
+
+spectrum(x) = sum [k=1:N] L(x, shifts[k])
+
+spec_max = 0.0
+do for [k=0:nsamples] {
+  val = spectrum(xmin + k * ((xmax - xmin) / nsamples))
+  if (val > spec_max) { spec_max = val }
+}
+
+
+set term pdfcairo font "NewComputerModern08,10" enhanced
+set output outfile
+set autoscale
+
+if (xmax == xmin) {
+  xmin = xmin - 10
+  xmax = xmax + 10
+}
+
+set xrange [xmax:xmin]
+set yrange [0:1]
+
+plot spectrum(x) / spec_max with lines lw 2 notitle

@@ -1,153 +1,97 @@
 #!/bin/sh
-################################################################################
-# Local Functions
-clean() {
-  rm ${TMP} && exit 0
+
+infile=""
+ext=""
+
+rotations="none"
+zoom=0.4
+iso=0.03
+
+render="false"
+lowres="false"
+trans="false"
+dens="false"
+mos="true"
+
+main()
+{
+  argparse $@
+
+  run_vmd
+}
+
+run_vmd()
+{
+  [ ${render} = "true" ] && display="none" || display="window"
+
+  vmd -dispdev ${display} -e ${CHEM_ROOT}/templates/vmo.tcl -args \
+    ${infile} ${ext} \
+    ${rotations} ${zoom} ${iso} \
+    ${render} ${lowres} ${trans} ${dens} ${mos}
+}
+
+argparse()
+{
+  while :; do
+    case $1 in
+      -h|--help)
+        help && exit ;;
+      --render)
+        render="true" ;;
+      -z|--zoom)
+        zoom=$2
+        shift ;;
+      -l|--lowres)
+        lowres="true" ;;
+      -r|--rotate)
+        rotations=$2
+        shift ;;
+      -d|--dens)
+        dens="true"
+        mos="false" ;;
+      -i|--iso)
+        iso=$2
+        shift ;;
+      -t|--trans)
+        trans="true" ;;
+      -c|--clean)
+        clean="true" ;;
+      --)
+        shift
+        break ;;
+      -?*)
+        printf 'Ignoring unknown option: %s\n' "$1" >&2 ;;
+      *)
+        break ;;
+    esac
+    shift
+  done
+
+  [ -z $1 ] && echo "Input file required." && exit 1
+  [ ! -f $1 ] && printf 'File not found: %s\n' "$1" >&2 && exit 1
+
+  infile="$(pwd)/$1"
+  ext=${infile##*.}
+  [ ${ext} = "cub" ] && ext="cube" || [ ${ext} = "xyz" ] && mos="false"
 }
 
 help() {
   local script_name=$(basename $0)
-  echo "Usage: ${script_name} [options...] file"
-  echo
-  echo "Visualize molecules and orbitals"
-  echo "NOTE: xyz files will only plot the structure"
-  echo
-  echo "Optional arguments:"
-  echo "-h, --help                    Display this message again :3"
-  echo "    --render                  Render image at 4000x4000 px"
-  echo "-l, --lowres                  Use 1000x1000 px resolution instead"
-  echo "-r, --rotate  <AXIS><FLOAT>   Rotate around an axis (comma-sep. list)"
-  echo "-z, --zoom    <FLOAT>         Set zoom factor (default: 0.4)"
-  echo "-i, --iso     <FLOAT>         Isosurface value (default: 0.03)"
-  echo "-t, --trans                   Make isosurface transparent"
-  echo "-d, --dens                    Plot the spin density"
-  echo "-c, --clean                   Clear out /tmp from any cancelled runs"
+  echo "Usage: ${script_name} [OPTION]... FILE"
+  echo "Visualize molecules and orbitals.\n"
+  echo "  -h, --help                    Display this message again. :)"
+  echo "  -v, --verbose                 Debug mode."
+  echo "      --render                  Render image at 4000x4000 px."
+  echo "  -l, --lowres                  Use 1000x1000 px resolution instead."
+  echo "  -r, --rotate  <AXIS><VALUE>   Rotate around an axis. (comma-separated list)"
+  echo "  -z, --zoom    ZOOM            Set zoom factor. (default: 0.4)"
+  echo "  -i, --iso     CONTOUR         Isosurface value. (default: 0.03)"
+  echo "  -t, --trans                   Make isosurface transparent."
+  echo "  -d, --dens                    Plot the spin density."
   echo
   echo "Example:"
   echo "  ${script_name} -r x45,y10 -z 0.9 coord.xyz"
-  echo
 }
-################################################################################
-# Initialization
-rotations=""
-zoom=0.4
-iso=0.03
 
-clean=0
-render=0
-lowres=0
-trans=0
-dens=0
-mos=1
-################################################################################
-# Parse Arguments
-while :; do
-  case $1 in
-    -h|--help)    help; exit ;;
-    --render)     render=1 ;;
-    -z|--zoom)    zoom=$2; shift ;;
-    -l|--lowres)  lowres=1 ;;
-    -r|--rotate)  rotations=$2; shift ;;
-    -d|--dens)    dens=1; mos=0 ;;
-    -i|--iso)     iso=$2; shift ;;
-    -t|--trans)   trans=1 ;;
-    -c|--clean)   clean=1 ;;
-    --) shift; break ;;
-    -?*) printf 'Ignoring unknown option: %s\n' "$1" >&2 ;;
-    *) break ;;
-  esac
-  shift
-done
 
-[ ${clean} -eq 1 ] && rm -f /tmp/pmo-*.vmd
-[ -z $1 ] && echo "Input file required." && exit 1
-
-INFILE=$1
-EXT=${INFILE##*.}
-[ ${EXT} = "cub" ] && EXT="cube"
-[ ${EXT} = "xyz" ] && mos=0
-
-TMP=$(mktemp -t pmo-XXX.vmd)
-################################################################################
-# VMD Tcl Interface
-cat > ${TMP} << EOF
-mol new {$(pwd)/${INFILE}} type ${EXT} first 0 last -1 step 1 waitfor 1 \\
-volsets {0 }
-
-display projection Perspective
-display depthcue off
-display antialias on
-axes location Off
-light 1 on
-color Display Background white
-
-mol representation CPK 0.800000 0.250000 10.000000 10.000000
-color Name A green
-color Name N orange
-color Name O red
-color Name H white
-color Name C gray
-
-set sel [atomselect top all]
-\$sel set radius 1.25
-mol addrep top
-
-scale by ${zoom}
-EOF
-
-if [ -n ${rotations} ]; then
-  i=1
-  max_count=$(echo ${rotations} | tr "," "\n" | wc -l)
-
-  while [ ${i} -lt $(( max_count + 1 )) ]; do
-    rot=$(echo ${rotations} | cut -d "," -f $i)
-    echo "rotate ${rot%%[0-9]*} by ${rot#[xyz]}" >> ${TMP}
-    i=$(( i+1 ))
-  done
-fi
-
-[ ${trans} -eq 1 ] && echo "mol material Transparent" >> ${TMP}
-
-[ ${dens} -eq 1 ] && cat >> ${TMP} << EOF
-mol representation Isosurface ${iso} 0 0 0 1 1
-mol color ColorID 0
-mol addrep top
-EOF
-
-[ ${mos} -eq 1 ] && cat >> ${TMP} << EOF
-mol representation Isosurface ${iso} 0 0 0 1 1
-mol color ColorID 0
-mol addrep top
-
-mol representation Isosurface -${iso} 0 0 0 1 1
-mol color ColorID 1
-mol addrep top
-EOF
-
-if [ ${lowres} -eq 1 -o ${render} -eq 0 ]; then
-  echo "display resize 1000 1000" >> ${TMP}
-else
-  echo "display resize 4000 4000" >> ${TMP}
-fi
-################################################################################
-# Running VMD
-if [ ${render} -eq 0 ]; then
-  vmd -e ${TMP}
-  clean
-fi
-
-INFILE=${INFILE%.*}
-cat >> ${TMP} << EOF
-render TachyonInternal ${INFILE}.png -format PNG -antialias 8 -tachyonopts \\
-"-stereo off -quality 4"
-
-exit
-quit 
-EOF
-
-vmd -dispdev text -e ${TMP}
-mv ${INFILE}.png ${INFILE}.tga 
-convert ${INFILE}.tga -quality 100 ${INFILE}.jpg
-
-rm ${INFILE}.tga
-clean
+main $@
